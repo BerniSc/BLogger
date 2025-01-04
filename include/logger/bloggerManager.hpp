@@ -14,15 +14,15 @@ class BLoggerManager {
         static BLoggerManager* _instance;
 
     public:
-        static BLoggerManager& operator()() {
+        static BLoggerManager* getManagerInstance() {
             if(_instance == nullptr)
                 _instance = new BLoggerManager();
 
-            return *_instance;
+            return _instance;
         }
 
-        static void addLogger(const std::string& name, std::shared_ptr<BLogger> logger) {
-            loggers[name] = logger;
+        static void addLogger(std::shared_ptr<BLogger> logger) {
+            loggers[logger->getName()] = logger;
         }
 
         static void printAvailableLoggers() {
@@ -34,5 +34,6 @@ class BLoggerManager {
 };
 
 inline BLoggerManager* BLoggerManager::_instance = nullptr;
+inline std::map<std::string, std::shared_ptr<BLogger>> BLoggerManager::loggers {};
 
 #endif
