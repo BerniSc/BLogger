@@ -18,6 +18,8 @@ int main(int argc, char *argv[]) {
     manager->addLogger(std::shared_ptr<BLogger>(cLogger));
     
     *cLogger << "Test" << "hi" << 42;
+    std::cout << "\nTest2\n";
+    *cLogger << "Test" << "hi" << 42;
     
 
     return 0;

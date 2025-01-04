@@ -7,8 +7,10 @@
 
 class BConsoleLogger : public BLogger {
     protected:
-        void log(const std::string& message) const override {
-            std::cout << message << std::endl;
+        void log(const std::string& message) override {
+            // Print no newline here. Our
+            std::cout << message;
+            std::cout.flush();
         }
     public:
         explicit BConsoleLogger(const std::string& name) : BLogger(name) {}
