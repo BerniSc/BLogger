@@ -3,6 +3,7 @@
 
 #include "../include/logger/bloggerManager.hpp"
 #include "../include/logger/loggers/bconsoleLogger.hpp"
+#include "../include/logger/messages/binaryBMsg.hpp"
 
 int main(int argc, char *argv[]) {
     if(argc != 1) {
@@ -17,9 +18,13 @@ int main(int argc, char *argv[]) {
 
     manager->addLogger(std::shared_ptr<BLogger>(cLogger));
     
+    int i = 42;
+
+
     *cLogger << "Test" << "hi" << 42;
+    *cLogger << BinaryBMsg(i);
     std::cout << "\nTest2\n";
-    *cLogger << "Test" << "hi" << 42;
+    *cLogger << "Test" << "hi" << i;
     
 
     return 0;
