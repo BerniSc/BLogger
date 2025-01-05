@@ -10,30 +10,35 @@
 
 class BLoggerManager {
     private:
-        static std::map<std::string, std::shared_ptr<BLogger>> loggers;
-        static BLoggerManager* _instance;
+        static std::map<std::string, std::shared_ptr<BLogger>>& loggers() {
+            static std::map<std::string, std::shared_ptr<BLogger>> instance;
+            return instance;
+        }
 
     public:
-        static BLoggerManager* getManagerInstance() {
-            if(_instance == nullptr)
-                _instance = new BLoggerManager();
-
-            return _instance;
-        }
+        BLoggerManager() = delete;
 
         static void addLogger(std::shared_ptr<BLogger> logger) {
-            loggers[logger->getName()] = logger;
+            loggers()[logger->getName()] = logger;
         }
 
-        static void printAvailableLoggers() {
-            // TODO Change to logger.log or smthg like that
-            for(const auto& logger : loggers)
-                std::cout << logger.second->getName() << "\n";
+        static std::shared_ptr<BLogger> getLogger(const std::string& name) {
+            auto& map = loggers();
+            auto it = map.find(name);
+            if(it == map.end())
+                throw std::runtime_error("Logger '" + name + "' not found");
+
+            return it->second;
+        }
+
+        static std::string getAvailableLoggers() {
+            std::string tmp = "";
+            for(const auto& logger : loggers())
+                tmp += logger.first + "\n";
+
+            return tmp;
         }
 
 };
-
-inline BLoggerManager* BLoggerManager::_instance = nullptr;
-inline std::map<std::string, std::shared_ptr<BLogger>> BLoggerManager::loggers {};
 
 #endif
