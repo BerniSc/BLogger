@@ -15,7 +15,7 @@ class BinaryBMsg : public BLogMessage {
         const std::string serialize() const override {
             constexpr size_t bits = sizeof(T) * 8;
             // return as Binary Format
-            return std::bitset<8>(value).to_string(); 
+            return std::bitset<bits>(value).to_string(); 
         }
 };
 

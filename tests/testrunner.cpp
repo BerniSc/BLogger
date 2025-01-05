@@ -1,9 +1,23 @@
+#include <cassert>
 #include <iostream>
 #include <memory>
 
 #include "../include/logger/bloggerManager.hpp"
 #include "../include/logger/loggers/bconsoleLogger.hpp"
 #include "../include/logger/messages/binaryBMsg.hpp"
+
+void testBinaryMessage(BLogger& lg) {
+    std::cout << "Test Binary Message: \n";
+
+    lg << BinaryBMsg(42);
+    assert(lg.getLastMessage() == "00000000000000000000000000101010");
+    lg << BinaryBMsg('A');
+    assert(lg.getLastMessage() == "01000001");
+    lg << BinaryBMsg(42ul);
+    assert(lg.getLastMessage() == "0000000000000000000000000000000000000000000000000000000000101010");
+    lg << BinaryBMsg(uint8_t(42));
+    assert(lg.getLastMessage() == "00101010");
+}
 
 int main(int argc, char *argv[]) {
     if(argc != 1) {
@@ -20,6 +34,8 @@ int main(int argc, char *argv[]) {
     
     int i = 42;
 
+    testBinaryMessage(*cLogger);
+    
 
     *cLogger << "Test" << "hi" << 42;
     *cLogger << BinaryBMsg(i);

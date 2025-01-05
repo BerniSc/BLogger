@@ -22,28 +22,31 @@ struct BLogger {
 
         BLogLevel currentLogLevel;
 
+        static std::string lastMessage;
+
         static ID instance_counter;
 
         virtual void log(const std::string&) = 0;
 
     private:
-        static bool needsNewline;
-
         class Chain {
             BLogger& logger;
 
             public:
-                Chain(BLogger& l) : logger(l) {}
+                Chain(BLogger& l) : logger(l) { }
+
                 ~Chain() { 
                     logger.log("\n");
-                    needsNewline = true;
                 }
 
                 // For BLogMessage types
                 template<typename T>
                 typename std::enable_if<std::is_base_of<BLogMessage, T>::value, Chain&>::type
                 operator<<(const T& msg) {
-                    logger.log(msg.serialize());
+                    std::string strMsg = msg.serialize();
+                    logger.log(strMsg);
+                    lastMessage += strMsg;
+
                     return *this;
                 }
 
@@ -53,7 +56,11 @@ struct BLogger {
                 operator<<(const T& value) {
                     std::ostringstream ss;
                     ss << value;
-                    logger.log(ss.str());
+
+                    std::string strMsg = ss.str();
+                    logger.log(strMsg);
+                    lastMessage += strMsg;
+
                     return *this;
                 }
                 
@@ -76,6 +83,10 @@ struct BLogger {
             return this->instanceID;
         }
 
+        inline const std::string& getLastMessage() const {
+            return this->lastMessage;
+        }
+
         /**
          * Template Logic
          * std::is_base_of<TYPE, T>::value --> returns true/false if T is of type TYPE
@@ -94,7 +105,13 @@ struct BLogger {
         template<typename T>
         typename std::enable_if<std::is_base_of<BLogMessage, T>::value, Chain>::type
         operator<<(const T& msg) {
-            log(msg.serialize());
+            // We enter this Function every FIRST Entry of a Log. Therefore we can reset the old "LastMsg"
+            lastMessage = "";
+
+            std::string strMsg = msg.serialize();
+            log(strMsg);
+            lastMessage += strMsg;
+
             return Chain(*this);
         }
 
@@ -109,14 +126,21 @@ struct BLogger {
         template<typename T>
         typename std::enable_if<!std::is_base_of<BLogMessage, T>::value, Chain>::type
         operator<<(const T& value) {
+            // We enter this Function every FIRST Entry of a Log. Therefore we can reset the old "LastMsg"
+            lastMessage = "";
+
             std::ostringstream ss;
             ss << value;
-            log(ss.str());
+
+            std::string strMsg = ss.str();
+            log(strMsg);
+            lastMessage += strMsg;
+
             return Chain(*this);
         }
 };
 
 inline uint8_t BLogger::instance_counter = 0;
-inline bool BLogger::needsNewline = false;
+inline std::string BLogger::lastMessage = "";
 
 #endif
