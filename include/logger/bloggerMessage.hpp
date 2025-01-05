@@ -5,7 +5,7 @@
 
 struct BLogMessage {
     public:
-        virtual const std::string& serialize() const = 0;
+        virtual const std::string serialize() const = 0;
 
 };
 

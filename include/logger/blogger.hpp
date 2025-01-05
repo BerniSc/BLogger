@@ -39,8 +39,18 @@ struct BLogger {
                     needsNewline = true;
                 }
 
+                // For BLogMessage types
                 template<typename T>
-                Chain& operator<<(const T& value) {
+                typename std::enable_if<std::is_base_of<BLogMessage, T>::value, Chain&>::type
+                operator<<(const T& msg) {
+                    logger.log(msg.serialize());
+                    return *this;
+                }
+
+                // For non-BLogMessage types
+                template<typename T>
+                typename std::enable_if<!std::is_base_of<BLogMessage, T>::value, Chain&>::type
+                operator<<(const T& value) {
                     std::ostringstream ss;
                     ss << value;
                     logger.log(ss.str());
