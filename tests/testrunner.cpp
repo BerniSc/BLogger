@@ -35,6 +35,8 @@ void testBLoggerManager() {
     *tmpLogger << "Success";
     assert(tmpLogger->getLastMessage() == "Success");
 
+    assert(tmpLogger.get() == cLogger && tmpLogger == BLoggerManager::getLogger("console"));
+
 }
 
 int main(int argc, char *argv[]) {
@@ -49,7 +51,5 @@ int main(int argc, char *argv[]) {
     const auto& logger = BLoggerManager::getLogger("console");
     testBinaryMessage(logger);
     
-    
-
     return 0;
 }

@@ -79,7 +79,7 @@ struct BLogger {
             return this->name;
         }
 
-        inline const ID getID() const {
+        inline ID getID() const {
             return this->instanceID;
         }
 
