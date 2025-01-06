@@ -4,6 +4,7 @@
 
 #include "../include/logger/bloggerManager.hpp"
 #include "../include/logger/loggers/bconsoleLogger.hpp"
+#include "../include/logger/loggers/bfileLogger.hpp"
 #include "../include/logger/messages/binaryBMsg.hpp"
 
 void testBinaryMessage(std::shared_ptr<BLogger> lg) {
@@ -50,6 +51,10 @@ int main(int argc, char *argv[]) {
     testBLoggerManager();
     const auto& logger = BLoggerManager::getLogger("console");
     testBinaryMessage(logger);
+    
+
+    BLogger *fLogger = new BFileLogger("file", "./log/01_log");
+    *fLogger << "Test Me";
     
     return 0;
 }
