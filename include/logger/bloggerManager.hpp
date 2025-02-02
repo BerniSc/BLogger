@@ -1,7 +1,6 @@
-#ifndef BLOGGER_MANAGER
-#define BLOGGER_MANAGER
+#ifndef BLOGGER_MANAGER_HPP
+#define BLOGGER_MANAGER_HPP
 
-#include <iostream>
 #include <map>
 #include <memory>
 #include <string>
