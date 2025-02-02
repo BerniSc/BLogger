@@ -8,7 +8,12 @@
 #include "bloggerStates.hpp"
 #include "bloggerMessage.hpp"
 
+class BLoggerDecorator;
+
 struct BLogger {
+    // Allow the decorator as a friend so we can call the "log" function to prevent a superfluous "newline"
+    friend class BLoggerDecorator;
+
     // "Typedefs" for the more "randomly picked" types so changing later is easier
     public:
         using ID = uint8_t;
@@ -17,7 +22,7 @@ struct BLogger {
         BLogger(const std::string& loggerName) :
             name(std::move(loggerName)), instanceID(++instance_counter), currentLogLevel(BLogLevel::NONE) {}
 
-        const std::string& name;
+        const std::string name;
         const ID instanceID;
 
         BLogLevel currentLogLevel;
@@ -83,7 +88,7 @@ struct BLogger {
             return this->instanceID;
         }
 
-        inline const std::string& getLastMessage() const {
+        virtual inline const std::string& getLastMessage() const {
             return this->lastMessage;
         }
 

@@ -6,6 +6,7 @@
 #include "../include/logger/loggers/bconsoleLogger.hpp"
 #include "../include/logger/loggers/bfileLogger.hpp"
 #include "../include/logger/messages/binaryBMsg.hpp"
+#include "../include/logger/decorators/btimestampDecorator.hpp"
 
 void testBinaryMessage(std::shared_ptr<BLogger> lg) {
     std::cout << "Test Binary Message: \n";
@@ -40,6 +41,39 @@ void testBLoggerManager() {
 
 }
 
+void testBTimestampDecorator() {
+    std::cout << "Test Timestamp Decorator: \n";
+    std::cout << "Available: " << BLoggerManager::getAvailableLoggers() << "\n";
+    
+    std::shared_ptr<BLogger> logger = BLoggerManager::getLogger("console");
+    auto decorated = BTimestampDecorator::decorate(logger);
+    BLoggerManager::addLogger(decorated);
+    std::cout << logger->getName() << "\n";
+    
+    assert(decorated->getName() == "console_timestamped" && logger->getName() == "console");
+    
+    *logger << "Undecorated Log";
+    *decorated << "Decorated Log" << " test";
+    assert(decorated->getLastMessage() == "Decorated Log test");
+    *decorated << BinaryBMsg('A') << " Working? " << BinaryBMsg(42);
+    assert(decorated->getLastMessage() == "01000001 Working? 00000000000000000000000000101010");
+
+    std::string lastMsg = logger->getLastMessage();
+    *decorated << lastMsg;
+
+    try {
+        BTimestampDecorator::decorate(nullptr);
+        assert(false);
+    } catch(const std::invalid_argument&) {
+
+    }
+
+    auto decorated2 = BTimestampDecorator::decorate(decorated);
+    *decorated2 << "Chained";
+    lastMsg = decorated2->getLastMessage();
+    assert(lastMsg == "Chained");
+}
+
 int main(int argc, char *argv[]) {
     if(argc != 1) {
         std::cout << "Execute-Parameters are not yet implemented" << std::endl;
@@ -51,10 +85,13 @@ int main(int argc, char *argv[]) {
     testBLoggerManager();
     const auto& logger = BLoggerManager::getLogger("console");
     testBinaryMessage(logger);
-    
 
+    testBTimestampDecorator();
+    
     BLogger *fLogger = new BFileLogger("file", "./log/01_log");
+    auto dfLogger = BTimestampDecorator::decorate(std::shared_ptr<BLogger>(fLogger));
     *fLogger << "Test Me";
+    *dfLogger << "Me Too";
     
     return 0;
 }
