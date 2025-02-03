@@ -12,9 +12,9 @@ class BTimestampDecorator : public BLoggerDecorator {
     private:
         std::string format;
 
-        bool parseFormat() const;
+        inline bool parseFormat() const;
 
-        std::string getFTimeStamp() const {
+        inline std::string getFTimeStamp() const {
             auto now = std::chrono::system_clock::now();
             auto time = std::chrono::system_clock::to_time_t(now);
 
@@ -26,20 +26,20 @@ class BTimestampDecorator : public BLoggerDecorator {
         };
 
     protected:
-        std::string decorateMessage(const std::string& msg) override {
+        inline std::string decorateMessage(const std::string& msg) override {
             std::string timestamp = getFTimeStamp();
             return timestamp + msg;
         }
 
     public:
-        BTimestampDecorator(std::shared_ptr<BLogger> logger, std::string timeFormat = "%Y-%m-%d %H:%M:%S")
+        inline BTimestampDecorator(std::shared_ptr<BLogger> logger, std::string timeFormat = "%Y-%m-%d %H:%M:%S")
             : BLoggerDecorator(std::move(logger), "timestamped"), 
             format(std::move(timeFormat)) {
                 if(!wrapped)
                     throw std::invalid_argument("Logger cannot be null");
             }
 
-        static std::shared_ptr<BLogger> decorate(std::shared_ptr<BLogger> logger, const std::string& format = "%Y-%m-%d %H:%M:%S") {
+        inline static std::shared_ptr<BLogger> decorate(std::shared_ptr<BLogger> logger, const std::string& format = "%Y-%m-%d %H:%M:%S") {
             if(logger == nullptr)
                 throw std::invalid_argument("Loggar cannot be null");
             return std::make_shared<BTimestampDecorator>(std::move(logger), format);

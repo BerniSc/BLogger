@@ -11,7 +11,7 @@ class BFileLogger : public BLogger {
         std::ofstream file;
 
     protected:
-        void log(const std::string& message) override {
+        inline void log(const std::string& message) override {
             if(file.is_open()) {
                 file << message;
                 file.flush();
@@ -19,7 +19,7 @@ class BFileLogger : public BLogger {
         }
 
     public:
-        explicit BFileLogger(const std::string& name, const std::string& filename) : BLogger(name) {
+        inline explicit BFileLogger(const std::string& name, const std::string& filename) : BLogger(name) {
             // Convert to native path format for platform independence
             std::filesystem::path filepath(filename);
             
@@ -31,7 +31,7 @@ class BFileLogger : public BLogger {
             }
         }
 
-        ~BFileLogger() {
+        inline ~BFileLogger() {
             if(file.is_open()) {
                 file.close();
             }

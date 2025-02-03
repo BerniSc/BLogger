@@ -4,6 +4,7 @@
 #include <cstdint>
 #include <sstream>
 #include <string>
+#include <atomic>
 
 #include "bloggerStates.hpp"
 #include "bloggerMessage.hpp"
@@ -27,9 +28,11 @@ struct BLogger {
 
         BLogLevel currentLogLevel;
 
-        static std::string lastMessage;
+        // Log last logged Message without decorations. Thread-Local should be sufficient 
+        // as thats what we expect anyway most of the Time. 
+        static thread_local std::string lastMessage;
 
-        static ID instance_counter;
+        static std::atomic<ID> instance_counter;
 
         virtual void log(const std::string&) = 0;
 
@@ -145,7 +148,7 @@ struct BLogger {
         }
 };
 
-inline uint8_t BLogger::instance_counter = 0;
-inline std::string BLogger::lastMessage = "";
+inline std::atomic<uint8_t> BLogger::instance_counter = 0;
+inline thread_local std::string BLogger::lastMessage = "";
 
 #endif

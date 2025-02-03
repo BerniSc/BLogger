@@ -7,13 +7,13 @@
 
 class BConsoleLogger : public BLogger {
     protected:
-        void log(const std::string& message) override {
+        inline void log(const std::string& message) override {
             // Print no newline here. Our Base-Logger will take care of it
             std::cout << message;
             std::cout.flush();
         }
     public:
-        explicit BConsoleLogger(const std::string& name) : BLogger(name) {}
+        inline explicit BConsoleLogger(const std::string& name) : BLogger(name) {}
 
 };
 

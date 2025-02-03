@@ -2,6 +2,7 @@
 #define BLOGGER_DECORATOR_HPP
 
 #include "../blogger.hpp"
+#include <memory>
 
 class BLoggerDecorator : public BLogger {
     protected:
@@ -11,7 +12,7 @@ class BLoggerDecorator : public BLogger {
         // Provide an interface to have an arbitrarily decorated Message (Front as well as Back) while collecting the logic here
         virtual std::string decorateMessage(const std::string& msg) = 0;
 
-        BLoggerDecorator(std::shared_ptr<BLogger> logger, const std::string& decoratorType)
+        inline BLoggerDecorator(std::shared_ptr<BLogger> logger, const std::string& decoratorType)
             : BLogger(logger->getName() + "_" + decoratorType)
             , wrapped(std::move(logger)) {
             if(!wrapped) {
@@ -19,7 +20,7 @@ class BLoggerDecorator : public BLogger {
             }
         }
 
-        void log(const std::string& msg) override {
+        inline void log(const std::string& msg) override {
             // "Control Message" was sent -> If not empty clean up current message to be ready for next log
             if(msg == "\n") {
                 if(!currentMessage.empty()) {
@@ -33,6 +34,8 @@ class BLoggerDecorator : public BLogger {
         }
     
     public:
+        // In a Decorator we want to forward the GetLastMessage to the downmost 
+        // Instance (the original Logger) to get the real Message
         inline const std::string& getLastMessage() const override {
             return wrapped->getLastMessage();
         }
