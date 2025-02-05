@@ -31,7 +31,7 @@ class BFileLogger : public BLogger {
             }
         }
 
-        inline ~BFileLogger() {
+        inline virtual ~BFileLogger() {
             if(file.is_open()) {
                 file.close();
             }

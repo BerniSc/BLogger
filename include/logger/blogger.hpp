@@ -2,6 +2,7 @@
 #define BLOGGER_HPP
 
 #include <cstdint>
+#include <mutex>
 #include <sstream>
 #include <string>
 #include <atomic>
@@ -37,12 +38,28 @@ struct BLogger {
         virtual void log(const std::string&) = 0;
 
     private:
+        static inline std::mutex outputMutex;
+
         class Chain {
             BLogger& logger;
+            std::unique_lock<std::mutex> lock;      // Lock for full Lifecycle of Chain
 
             public:
-                Chain(BLogger& l) : logger(l) { }
+                // Initial Message only relevant on first call -> Passing responsibility of Logging 
+                // to Chain. Chain starts Lock and then performs Operations. After last Chain it
+                // destructs and releases Lock
+                Chain(BLogger& l, const std::string& initialMsg = "") : logger(l), lock(outputMutex) {
+                    *this << initialMsg;        // Process the Initial Message under the Lock
+                }
 
+                Chain(Chain&& other) noexcept : logger(other.logger), lock(std::move(other.lock)) { }
+
+                // Prevent reasignment so Lock etc stays intact
+                Chain& operator=(Chain&&) = delete;
+                Chain(const Chain&) = delete;
+                Chain& operator=(const Chain&) = delete;
+
+                // Finish Log-Entry with a Newline
                 ~Chain() { 
                     logger.log("\n");
                 }
@@ -117,10 +134,7 @@ struct BLogger {
             lastMessage = "";
 
             std::string strMsg = msg.serialize();
-            log(strMsg);
-            lastMessage += strMsg;
-
-            return Chain(*this);
+            return Chain(*this, strMsg);
         }
 
         // For Types that DON'T have an Implementation of the custom BLogMessage-Interface,
@@ -137,14 +151,12 @@ struct BLogger {
             // We enter this Function every FIRST Entry of a Log. Therefore we can reset the old "LastMsg"
             lastMessage = "";
 
+            // Convert any regular Datatype to String
             std::ostringstream ss;
             ss << value;
 
             std::string strMsg = ss.str();
-            log(strMsg);
-            lastMessage += strMsg;
-
-            return Chain(*this);
+            return Chain(*this, strMsg);
         }
 };
 

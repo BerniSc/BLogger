@@ -1,6 +1,8 @@
 #include <cassert>
 #include <iostream>
 #include <memory>
+#include <thread>
+#include <vector>
 
 #include "../include/logger/bloggerManager.hpp"
 #include "../include/logger/loggers/bconsoleLogger.hpp"
@@ -38,7 +40,6 @@ void testBLoggerManager() {
     assert(tmpLogger->getLastMessage() == "Success");
 
     assert(tmpLogger.get() == cLogger && tmpLogger == BLoggerManager::getLogger("console"));
-
 }
 
 void testBTimestampDecorator() {
@@ -64,15 +65,48 @@ void testBTimestampDecorator() {
     try {
         BTimestampDecorator::decorate(nullptr);
         assert(false);
-    } catch(const std::invalid_argument&) {
+    } catch(const std::invalid_argument&) { }
 
-    }
-
-    auto decorated2 = BTimestampDecorator::decorate(decorated);
-    *decorated2 << "Chained";
-    lastMsg = decorated2->getLastMessage();
+    auto twiceDecorated = BTimestampDecorator::decorate(decorated);
+    *twiceDecorated << "Chained";
+    lastMsg = twiceDecorated->getLastMessage();
     assert(lastMsg == "Chained");
 }
+
+void testThreadSafety() {
+    std::cout << "Testing Thread Safety:\n";
+    
+    const int NUM_THREADS = 10;
+    const int MSGS_PER_THREAD = 1000;
+    
+    auto logger = BLoggerManager::getLogger("file_timestamped");
+    // auto decorated = BTimestampDecorator::decorate(logger);
+    auto decorated = logger;
+    
+    std::vector<std::thread> threads;
+    std::atomic<int> counter{0};
+
+    // Create multiple threads that log simultaneously
+    for(int i = 0; i < NUM_THREADS; i++) {
+        threads.emplace_back([&decorated, &counter, i, MSGS_PER_THREAD]() {
+            for(int j = 0; j < MSGS_PER_THREAD; j++) {
+                *decorated << "Thread " << i << " Message " << j;
+                counter++;
+            }
+        });
+    }
+
+    // Wait for all threads to complete
+    for(auto& thread : threads) {
+        thread.join();
+    }
+
+    // Verify results
+    assert(counter == NUM_THREADS * MSGS_PER_THREAD);
+    
+    std::cout << "Thread safety test completed. Check logs for corruption.\n";
+}
+
 
 int main(int argc, char *argv[]) {
     if(argc != 1) {
@@ -90,8 +124,13 @@ int main(int argc, char *argv[]) {
     
     BLogger *fLogger = new BFileLogger("file", "./log/01_log");
     auto dfLogger = BTimestampDecorator::decorate(std::shared_ptr<BLogger>(fLogger));
+    BLoggerManager::addLogger(std::shared_ptr<BLogger>(dfLogger));
     *fLogger << "Test Me";
     *dfLogger << "Me Too";
+
+    *logger << BLoggerManager::getAvailableLoggers();
+
+    testThreadSafety();
     
     return 0;
 }

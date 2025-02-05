@@ -12,10 +12,10 @@ class BConsoleLogger : public BLogger {
             std::cout << message;
             std::cout.flush();
         }
+
     public:
         inline explicit BConsoleLogger(const std::string& name) : BLogger(name) {}
 
 };
-
 
 #endif
