@@ -9,6 +9,7 @@
 #include "../include/logger/loggers/bfileLogger.hpp"
 #include "../include/logger/messages/binaryBMsg.hpp"
 #include "../include/logger/decorators/btimestampDecorator.hpp"
+#include "../include/logger/decorators/bloglevelDecorator.hpp"
 
 void testBinaryMessage(std::shared_ptr<BLogger> lg) {
     std::cout << "Test Binary Message: \n";
@@ -107,6 +108,63 @@ void testThreadSafety() {
     std::cout << "Thread safety test completed. Check logs for corruption.\n";
 }
 
+void testLogLevel(std::shared_ptr<BLogger> lg) {
+    lg = BLoglevelDecorator::decorate(lg);
+
+    *lg << "This should have a level";
+    (*lg)[BLogLevel::DEBUG] << "This one too";
+    (*lg)[BLogLevel::INFO] << "Now Info";
+    
+    lg = BTimestampDecorator::decorate(lg);
+
+    (*lg)[BLogLevel::WARNING] << "Now Warning";
+    (*lg)[BLogLevel::LOG] << "Now Log";
+    (*lg)[BLogLevel::ERROR] << "Now Error";
+}
+
+void testLogLevels() {
+    auto console_logLvl = BLoglevelDecorator::decorate(std::make_shared<BConsoleLogger>("console_logLvl"));
+    BLoggerManager::addLogger(console_logLvl);
+    (*console_logLvl)[BLogLevel::ERROR] << "=========================";
+    
+    BLogLevelManager::setDefaultLogLevel(BLogLevel::NONE);
+    *console_logLvl << "Should show the Default (NONE)";  // NONE >= NONE 
+    (*console_logLvl)[BLogLevel::ERROR] << "Should show (ERROR)";  // ERROR >= NONE
+    (*console_logLvl)[BLogLevel::DEBUG] << "Should show (DEBUG)";  // DEBUG >= NONE
+    (*console_logLvl)[BLogLevel::INFO] << "Should show (INFO)";  // INFO >= NONE
+    
+
+    BLogLevelManager::setDefaultLogLevel(BLogLevel::WARNING);
+    *console_logLvl << "Should not show the Default (NONE)";  // NONE <= WARNING
+    (*console_logLvl)[BLogLevel::ERROR] << "Should show (ERROR)";  // ERROR >= WARNING
+    (*console_logLvl)[BLogLevel::DEBUG] << "Should not show (DEBUG)";  // DEBUG <= WARNING
+    (*console_logLvl)[BLogLevel::INFO] << "Should not show (INFO)";  // INFO <= WARNING
+
+    BLogLevelManager::setLoggerLevel("console_logLvl", BLogLevel::DEBUG);
+    (*console_logLvl)[BLogLevel::INFO] << "Should show (INFO)";  // Should show as INFO >= DEBUG
+    
+    try {
+        BLogLevelManager::setLoggerLevel("console_logLvl", BLogLevel::ERROR);
+        std::cout << "Test failed: Should not allow second level setting" << std::endl;
+    } catch(const std::runtime_error&) {
+        std::cout << "Test passed: Cannot set level twice" << std::endl;
+    }
+    
+    auto decorated = BTimestampDecorator::decorate(console_logLvl);
+    BLoggerManager::addLogger(decorated);
+    
+    (*decorated)[BLogLevel::INFO] << "Should show with timestamp (INFO)";  // Should show with timestamp
+    (*decorated)[BLogLevel::DEBUG] << "Should show with timestamp (DEBUG)";  // Should show with timestamp
+    
+    auto fileLogger_logLvl = std::make_shared<BFileLogger>("file_logLvl", "./log/02_log");
+    BLoggerManager::addLogger(fileLogger_logLvl);
+    BLogLevelManager::setLoggerLevel("file_logLvl", BLogLevel::ERROR);
+    
+    (*fileLogger_logLvl)[BLogLevel::WARNING] << "Should not show (WARNING)";  // Shouldn't show as WARNING < ERROR
+    (*fileLogger_logLvl)[BLogLevel::ERROR] << "Should show (ERROR)";  // Should show as ERROR >= ERROR
+    
+    std::cout << "Log level tests completed" << std::endl;
+}
 
 int main(int argc, char *argv[]) {
     if(argc != 1) {
@@ -131,6 +189,10 @@ int main(int argc, char *argv[]) {
     *logger << BLoggerManager::getAvailableLoggers();
 
     testThreadSafety();
+
+    testLogLevel(logger);
+
+    testLogLevels();
     
     return 0;
 }

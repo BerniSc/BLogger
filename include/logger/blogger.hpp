@@ -2,6 +2,7 @@
 #define BLOGGER_HPP
 
 #include <cstdint>
+#include <iostream>
 #include <mutex>
 #include <sstream>
 #include <string>
@@ -22,12 +23,13 @@ struct BLogger {
 
     protected:
         BLogger(const std::string& loggerName) :
-            name(std::move(loggerName)), instanceID(++instance_counter), currentLogLevel(BLogLevel::NONE) {}
+            name(std::move(loggerName)), instanceID(++instance_counter) { }
 
         const std::string name;
         const ID instanceID;
 
-        BLogLevel currentLogLevel;
+        static inline BLogLevel currentLogLevel = BLogLevel::NONE;
+        static inline BLogLevel defaultLogLevel = BLogLevel::NONE;
 
         // Log last logged Message without decorations. Thread-Local should be sufficient 
         // as thats what we expect anyway most of the Time. 
@@ -39,17 +41,26 @@ struct BLogger {
 
     private:
         static inline std::mutex outputMutex;
+        static inline std::string topic = "";
+
+        inline bool shouldLog(BLogLevel messageLevel) {
+            return messageLevel >= BLogLevelManager::getLoggerLevel(name);
+        }
 
         class Chain {
             BLogger& logger;
             std::unique_lock<std::mutex> lock;      // Lock for full Lifecycle of Chain
+            std::string topic;
+
+            bool doLog;
 
             public:
                 // Initial Message only relevant on first call -> Passing responsibility of Logging 
                 // to Chain. Chain starts Lock and then performs Operations. After last Chain it
                 // destructs and releases Lock
-                Chain(BLogger& l, const std::string& initialMsg = "") : logger(l), lock(outputMutex) {
-                    *this << initialMsg;        // Process the Initial Message under the Lock
+                Chain(BLogger& l, const std::string& initialMsg = "") : logger(l), lock(outputMutex), topic(BLogger::topic), doLog(l.shouldLog(currentLogLevel)) {
+                    if(doLog)
+                        *this << initialMsg;        // Process the Initial Message under the Lock
                 }
 
                 Chain(Chain&& other) noexcept : logger(other.logger), lock(std::move(other.lock)) { }
@@ -61,17 +72,22 @@ struct BLogger {
 
                 // Finish Log-Entry with a Newline
                 ~Chain() { 
-                    logger.log("\n");
+                    if(doLog)
+                        logger.log("\n");
+                    // Reset Topic and Level
+                    topic = "";         
+                    currentLogLevel = defaultLogLevel;
                 }
 
                 // For BLogMessage types
                 template<typename T>
                 typename std::enable_if<std::is_base_of<BLogMessage, T>::value, Chain&>::type
                 operator<<(const T& msg) {
-                    std::string strMsg = msg.serialize();
-                    logger.log(strMsg);
-                    lastMessage += strMsg;
-
+                    if(doLog) {
+                        std::string strMsg = msg.serialize();
+                        logger.log(strMsg);
+                        lastMessage += strMsg;
+                    }
                     return *this;
                 }
 
@@ -79,19 +95,20 @@ struct BLogger {
                 template<typename T>
                 typename std::enable_if<!std::is_base_of<BLogMessage, T>::value, Chain&>::type
                 operator<<(const T& value) {
-                    std::ostringstream ss;
-                    ss << value;
+                    if(doLog) {
+                        std::ostringstream ss;
+                        ss << value;
 
-                    std::string strMsg = ss.str();
-                    logger.log(strMsg);
-                    lastMessage += strMsg;
-
+                        std::string strMsg = ss.str();
+                        logger.log(strMsg);
+                        lastMessage += strMsg;
+                    }
                     return *this;
                 }
                 
                 friend class BLogger; // Allows BLogger to access Chain
         };
-
+        
     public:
         BLogger(const BLogger &) = default;
         BLogger(BLogger &&) = delete;
@@ -110,6 +127,26 @@ struct BLogger {
 
         virtual inline const std::string& getLastMessage() const {
             return this->lastMessage;
+        }
+
+        virtual inline BLogLevel getLogLevel() const {
+            return this->currentLogLevel;
+        }
+
+        inline const std::string& getTopic() const {
+            return this->topic;
+        }
+
+        // Log level via []
+        virtual BLogger& operator[](BLogLevel level) {
+            currentLogLevel = level;
+            return *this;
+        }
+
+        // Topic via ()
+        BLogger& operator()(const std::string& topic) {
+            this->topic = topic;
+            return *this;
         }
 
         /**

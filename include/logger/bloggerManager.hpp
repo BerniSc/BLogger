@@ -6,9 +6,11 @@
 #include <string>
 
 #include "blogger.hpp"
+#include "bloggerStates.hpp"
 
 class BLoggerManager {
     private:
+
         static std::map<std::string, std::shared_ptr<BLogger>>& loggers() {
             static std::map<std::string, std::shared_ptr<BLogger>> instance;
             return instance;
@@ -38,6 +40,13 @@ class BLoggerManager {
             return tmp;
         }
 
+        static void setDefaultLogLevel(BLogLevel level) {
+            BLogLevelManager::setDefaultLogLevel(level);
+        }
+
+        static void setLoggerLevel(const std::string& loggerName, BLogLevel level) {
+            BLogLevelManager::setLoggerLevel(loggerName, level);
+        }
 };
 
 #endif

@@ -39,6 +39,18 @@ class BLoggerDecorator : public BLogger {
         inline const std::string& getLastMessage() const override {
             return wrapped->getLastMessage();
         }
+
+        // Also override operator[] to propagate to wrapped logger
+        BLogger& operator[](BLogLevel level) override {
+            wrapped->operator[](level);  // Set level on wrapped logger
+            return *this;
+        }
+
+        // Also override getLogLevel to get from wrapped logger
+        BLogLevel getLogLevel() const override {
+            return wrapped->getLogLevel();
+        }
+
 };
 
 #endif
