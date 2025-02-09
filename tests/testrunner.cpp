@@ -125,27 +125,29 @@ void testLogLevel(std::shared_ptr<BLogger> lg) {
 void testLogLevels() {
     auto console_logLvl = BLoglevelDecorator::decorate(std::make_shared<BConsoleLogger>("console_logLvl"));
     BLoggerManager::addLogger(console_logLvl);
+    BLoggerConfig::setTopics({"console"});
     (*console_logLvl)[BLogLevel::ERROR] << "=========================";
     
-    BLogLevelManager::setDefaultLogLevel(BLogLevel::NONE);
+    BLoggerConfig::setDefaultLogLevel(BLogLevel::NONE);
     *console_logLvl << "Should show the Default (NONE)";  // NONE >= NONE 
     (*console_logLvl)[BLogLevel::ERROR] << "Should show (ERROR)";  // ERROR >= NONE
     (*console_logLvl)[BLogLevel::DEBUG] << "Should show (DEBUG)";  // DEBUG >= NONE
     (*console_logLvl)[BLogLevel::INFO] << "Should show (INFO)";  // INFO >= NONE
     
 
-    BLogLevelManager::setDefaultLogLevel(BLogLevel::WARNING);
+    BLoggerConfig::setDefaultLogLevel(BLogLevel::WARNING);
     *console_logLvl << "Should not show the Default (NONE)";  // NONE <= WARNING
     (*console_logLvl)[BLogLevel::ERROR] << "Should show (ERROR)";  // ERROR >= WARNING
     (*console_logLvl)[BLogLevel::DEBUG] << "Should not show (DEBUG)";  // DEBUG <= WARNING
     (*console_logLvl)[BLogLevel::INFO] << "Should not show (INFO)";  // INFO <= WARNING
 
-    BLogLevelManager::setLoggerLevel("console_logLvl", BLogLevel::DEBUG);
+    BLoggerConfig::setLoggerLevel("console_logLvl", BLogLevel::DEBUG);
     (*console_logLvl)[BLogLevel::INFO] << "Should show (INFO)";  // Should show as INFO >= DEBUG
     
     try {
-        BLogLevelManager::setLoggerLevel("console_logLvl", BLogLevel::ERROR);
+        BLoggerConfig::setLoggerLevel("console_logLvl", BLogLevel::ERROR);
         std::cout << "Test failed: Should not allow second level setting" << std::endl;
+        assert(false);
     } catch(const std::runtime_error&) {
         std::cout << "Test passed: Cannot set level twice" << std::endl;
     }
@@ -158,12 +160,70 @@ void testLogLevels() {
     
     auto fileLogger_logLvl = std::make_shared<BFileLogger>("file_logLvl", "./log/02_log");
     BLoggerManager::addLogger(fileLogger_logLvl);
-    BLogLevelManager::setLoggerLevel("file_logLvl", BLogLevel::ERROR);
+    BLoggerConfig::setLoggerLevel("file_logLvl", BLogLevel::ERROR);
     
     (*fileLogger_logLvl)[BLogLevel::WARNING] << "Should not show (WARNING)";  // Shouldn't show as WARNING < ERROR
     (*fileLogger_logLvl)[BLogLevel::ERROR] << "Should show (ERROR)";  // Should show as ERROR >= ERROR
     
     std::cout << "Log level tests completed" << std::endl;
+}
+
+void testTopicsAndFreeze() {
+    auto console = BLoglevelDecorator::decorate(std::make_shared<BConsoleLogger>("console"));
+    BLoggerManager::addLogger(console);
+    (*console)[BLogLevel::ERROR] << "=========================";
+    (*console)[BLogLevel::ERROR] << "Testing Topics and Freeze";
+    
+    // Default behavior (no topics set)
+    (*console)[BLogLevel::INFO] << "Should show (no topics set)";
+    (*console)("random")[BLogLevel::INFO] << "Should show (no topics set)";
+
+    // Topic filtering
+    BLoggerConfig::setTopics({"memorymanagement", "logging"});
+    *console << "Should show (no topic)";
+    (*console)("memorymanagement")[BLogLevel::INFO] << "Should show (enabled topic)";
+    (*console)("logging")[BLogLevel::INFO] << "Should show (enabled topic)";
+    (*console)("drivers")[BLogLevel::ERROR] << "Should NOT show (disabled topic)";
+
+    // Topic and level interaction
+    BLoggerConfig::setDefaultLogLevel(BLogLevel::WARNING);
+    (*console)("memorymanagement")[BLogLevel::INFO] << "Should NOT show (enabled topic, but INFO < WARNING)";
+    (*console)("memorymanagement")[BLogLevel::ERROR] << "Should show (enabled topic and ERROR >= WARNING)";
+    (*console)("drivers")[BLogLevel::ERROR] << "Should NOT show (disabled topic, even with ERROR)";
+
+    // Freeze
+    BLoggerConfig::freeze();
+
+    try {
+        BLoggerConfig::setTopics({"new_topic"});
+        std::cout << "Test failed: Should not allow topic changes after freeze" << std::endl;
+        assert(false);
+    } catch(const std::runtime_error&) {
+        (*console)[BLogLevel::INFO] << "Test passed: Cannot change topics after freeze";
+    }
+
+    try {
+        BLoggerConfig::setDefaultLogLevel(BLogLevel::ERROR);
+        std::cout << "Test failed: Should not allow level changes after freeze" << std::endl;
+        assert(false);
+    } catch(const std::runtime_error&) {
+        (*console)[BLogLevel::INFO] << "Test passed: Cannot change default level after freeze";
+    }
+
+    try {
+        BLoggerConfig::setLoggerLevel("console", BLogLevel::ERROR);
+        std::cout << "Test failed: Should not allow custom level changes after freeze" << std::endl;
+        assert(false);
+    } catch(const std::runtime_error&) {
+        (*console)[BLogLevel::INFO] << "Test passed: Cannot set custom levels after freeze";
+    }
+
+    // Test 5: Verify settings remained unchanged after failed modifications
+    (*console)("database")[BLogLevel::ERROR] << "Should still show (enabled topic unchanged)";
+    (*console)("security")[BLogLevel::ERROR] << "Should still NOT show (disabled topic unchanged)";
+
+    (*console)[BLogLevel::ERROR] << "Topic and freeze tests completed";
+    (*console)[BLogLevel::ERROR] << "=========================";
 }
 
 int main(int argc, char *argv[]) {
@@ -193,6 +253,8 @@ int main(int argc, char *argv[]) {
     testLogLevel(logger);
 
     testLogLevels();
+
+    testTopicsAndFreeze();
     
     return 0;
 }

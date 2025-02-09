@@ -6,7 +6,7 @@
 #include <string>
 
 #include "blogger.hpp"
-#include "bloggerStates.hpp"
+#include "bloggerConfig.hpp"
 
 class BLoggerManager {
     private:
@@ -41,11 +41,11 @@ class BLoggerManager {
         }
 
         static void setDefaultLogLevel(BLogLevel level) {
-            BLogLevelManager::setDefaultLogLevel(level);
+            BLoggerConfig::setDefaultLogLevel(level);
         }
 
         static void setLoggerLevel(const std::string& loggerName, BLogLevel level) {
-            BLogLevelManager::setLoggerLevel(loggerName, level);
+            BLoggerConfig::setLoggerLevel(loggerName, level);
         }
 };
 

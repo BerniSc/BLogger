@@ -2,13 +2,12 @@
 #define BLOGGER_HPP
 
 #include <cstdint>
-#include <iostream>
 #include <mutex>
 #include <sstream>
 #include <string>
 #include <atomic>
 
-#include "bloggerStates.hpp"
+#include "bloggerConfig.hpp"
 #include "bloggerMessage.hpp"
 
 class BLoggerDecorator;
@@ -43,14 +42,16 @@ struct BLogger {
         static inline std::mutex outputMutex;
         static inline std::string topic = "";
 
-        inline bool shouldLog(BLogLevel messageLevel) {
-            return messageLevel >= BLogLevelManager::getLoggerLevel(name);
+        inline bool shouldLog(BLogLevel messageLevel, const std::string& messageTopic) {
+            if(!messageTopic.empty() && !BLoggerConfig::isTopicEnabled(messageTopic))
+                return false;
+
+            return messageLevel >= BLoggerConfig::getLoggerLevel(name);
         }
 
         class Chain {
             BLogger& logger;
             std::unique_lock<std::mutex> lock;      // Lock for full Lifecycle of Chain
-            std::string topic;
 
             bool doLog;
 
@@ -58,7 +59,7 @@ struct BLogger {
                 // Initial Message only relevant on first call -> Passing responsibility of Logging 
                 // to Chain. Chain starts Lock and then performs Operations. After last Chain it
                 // destructs and releases Lock
-                Chain(BLogger& l, const std::string& initialMsg = "") : logger(l), lock(outputMutex), topic(BLogger::topic), doLog(l.shouldLog(currentLogLevel)) {
+                Chain(BLogger& l, const std::string& initialMsg = "") : logger(l), lock(outputMutex), doLog(l.shouldLog(currentLogLevel, BLogger::topic)) {
                     if(doLog)
                         *this << initialMsg;        // Process the Initial Message under the Lock
                 }
