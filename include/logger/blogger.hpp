@@ -30,6 +30,9 @@ struct BLogger {
         static inline BLogLevel currentLogLevel = BLogLevel::NONE;
         static inline BLogLevel defaultLogLevel = BLogLevel::NONE;
 
+        static inline std::string currentTopic = "";
+        static inline std::string defaultTopic = "";
+                                                      
         // Log last logged Message without decorations. Thread-Local should be sufficient 
         // as thats what we expect anyway most of the Time. 
         static thread_local std::string lastMessage;
@@ -40,7 +43,7 @@ struct BLogger {
 
     private:
         static inline std::mutex outputMutex;
-        static inline std::string topic = "";
+        static inline bool frozen = false;
 
         inline bool shouldLog(BLogLevel messageLevel, const std::string& messageTopic) {
             if(!messageTopic.empty() && !BLoggerConfig::isTopicEnabled(messageTopic))
@@ -59,7 +62,7 @@ struct BLogger {
                 // Initial Message only relevant on first call -> Passing responsibility of Logging 
                 // to Chain. Chain starts Lock and then performs Operations. After last Chain it
                 // destructs and releases Lock
-                Chain(BLogger& l, const std::string& initialMsg = "") : logger(l), lock(outputMutex), doLog(l.shouldLog(currentLogLevel, BLogger::topic)) {
+                Chain(BLogger& l, const std::string& initialMsg = "") : logger(l), lock(outputMutex), doLog(l.shouldLog(currentLogLevel, BLogger::currentTopic)) {
                     if(doLog)
                         *this << initialMsg;        // Process the Initial Message under the Lock
                 }
@@ -76,7 +79,7 @@ struct BLogger {
                     if(doLog)
                         logger.log("\n");
                     // Reset Topic and Level
-                    topic = "";         
+                    currentTopic = defaultTopic;         
                     currentLogLevel = defaultLogLevel;
                 }
 
@@ -135,7 +138,7 @@ struct BLogger {
         }
 
         inline const std::string& getTopic() const {
-            return this->topic;
+            return this->currentTopic;
         }
 
         // Log level via []
@@ -146,7 +149,7 @@ struct BLogger {
 
         // Topic via ()
         BLogger& operator()(const std::string& topic) {
-            this->topic = topic;
+            this->currentTopic = topic;
             return *this;
         }
 
@@ -195,6 +198,25 @@ struct BLogger {
 
             std::string strMsg = ss.str();
             return Chain(*this, strMsg);
+        }
+
+        // For ease of use 
+        BLogger& withDefaults(const std::string& topic, BLogLevel level = BLogLevel::INFO) {
+            if(frozen) 
+                throw std::runtime_error("Logger configuration is frozen");
+            defaultTopic = topic;
+            defaultLogLevel = level;
+            currentTopic = defaultTopic;      
+            currentLogLevel = defaultLogLevel;
+            return *this;
+        }
+
+        void freeze() noexcept {
+            frozen = true;
+        }
+
+        bool isFrozen() const noexcept {
+            return frozen;
         }
 };
 

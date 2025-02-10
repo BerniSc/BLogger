@@ -5,6 +5,7 @@
 #include <vector>
 
 #include "../include/logger/bloggerManager.hpp"
+#include "../include/logger/blogContext.hpp"
 #include "../include/logger/loggers/bconsoleLogger.hpp"
 #include "../include/logger/loggers/bfileLogger.hpp"
 #include "../include/logger/messages/binaryBMsg.hpp"
@@ -35,19 +36,19 @@ void testBLoggerManager() {
     loggers = BLoggerManager::getAvailableLoggers();
     assert(loggers == "console\n");
 
-    std::shared_ptr<BLogger> tmpLogger = BLoggerManager::getLogger("console");
+    std::shared_ptr<BLogger> tmpLogger = BLoggerManager::getLoggerPtr("console");
     assert(tmpLogger != nullptr);
     *tmpLogger << "Success";
     assert(tmpLogger->getLastMessage() == "Success");
 
-    assert(tmpLogger.get() == cLogger && tmpLogger == BLoggerManager::getLogger("console"));
+    assert(tmpLogger.get() == cLogger && tmpLogger == BLoggerManager::getLoggerPtr("console"));
 }
 
 void testBTimestampDecorator() {
     std::cout << "Test Timestamp Decorator: \n";
     std::cout << "Available: " << BLoggerManager::getAvailableLoggers() << "\n";
     
-    std::shared_ptr<BLogger> logger = BLoggerManager::getLogger("console");
+    std::shared_ptr<BLogger> logger = BLoggerManager::getLoggerPtr("console");
     auto decorated = BTimestampDecorator::decorate(logger);
     BLoggerManager::addLogger(decorated);
     std::cout << logger->getName() << "\n";
@@ -80,7 +81,7 @@ void testThreadSafety() {
     const int NUM_THREADS = 10;
     const int MSGS_PER_THREAD = 1000;
     
-    auto logger = BLoggerManager::getLogger("file_timestamped");
+    auto logger = BLoggerManager::getLoggerPtr("file_timestamped");
     // auto decorated = BTimestampDecorator::decorate(logger);
     auto decorated = logger;
     
@@ -218,12 +219,24 @@ void testTopicsAndFreeze() {
         (*console)[BLogLevel::INFO] << "Test passed: Cannot set custom levels after freeze";
     }
 
-    // Test 5: Verify settings remained unchanged after failed modifications
+    // settings remained unchanged after failed modifications
     (*console)("database")[BLogLevel::ERROR] << "Should still show (enabled topic unchanged)";
     (*console)("security")[BLogLevel::ERROR] << "Should still NOT show (disabled topic unchanged)";
 
     (*console)[BLogLevel::ERROR] << "Topic and freeze tests completed";
     (*console)[BLogLevel::ERROR] << "=========================";
+}
+
+void testEaseOfUsePt1() {
+    BLogger& lg = BLoggerManager::get("console");
+    lg[BLogLevel::ERROR] << "Sucess: get was working";
+
+    BLogContext memLgW(BLoggerManager::getLoggerPtr("console_logLvl_leveled_timestamped"),"", BLogLevel::WARNING);
+
+    memLgW << "[DEMO] Running low on Mem";
+    memLgW << "Still";
+    memLgW.error() << "And now for Real";
+    memLgW.raw()[BLogLevel::ERROR] << "Works like this as well";
 }
 
 int main(int argc, char *argv[]) {
@@ -235,7 +248,7 @@ int main(int argc, char *argv[]) {
     }
 
     testBLoggerManager();
-    const auto& logger = BLoggerManager::getLogger("console");
+    const auto& logger = BLoggerManager::getLoggerPtr("console");
     testBinaryMessage(logger);
 
     testBTimestampDecorator();
@@ -255,6 +268,8 @@ int main(int argc, char *argv[]) {
     testLogLevels();
 
     testTopicsAndFreeze();
+
+    testEaseOfUsePt1();
     
     return 0;
 }

@@ -23,13 +23,17 @@ class BLoggerManager {
             loggers()[logger->getName()] = logger;
         }
 
-        static std::shared_ptr<BLogger> getLogger(const std::string& name) {
+        static std::shared_ptr<BLogger> getLoggerPtr(const std::string& name) {
             auto& map = loggers();
             auto it = map.find(name);
             if(it == map.end())
                 throw std::runtime_error("Logger '" + name + "' not found");
 
             return it->second;
+        }
+
+        static BLogger& get(const std::string& name) {
+            return *getLoggerPtr(name);
         }
 
         static std::string getAvailableLoggers() {
