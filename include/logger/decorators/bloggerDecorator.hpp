@@ -32,7 +32,7 @@ class BLoggerDecorator : public BLogger {
                 currentMessage += msg;
             }
         }
-    
+
     public:
         // In a Decorator we want to forward the GetLastMessage to the downmost 
         // Instance (the original Logger) to get the real Message
@@ -51,6 +51,9 @@ class BLoggerDecorator : public BLogger {
             return wrapped->getLogLevel();
         }
 
+        virtual std::shared_ptr<BLogger> getWrappedLogger() const { 
+            return wrapped;
+        }
 };
 
 #endif

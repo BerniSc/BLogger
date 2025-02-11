@@ -9,9 +9,8 @@
 class BLogContext {
 private:
     std::shared_ptr<BLogger> logger;
-    std::string defaultTopic;
-    BLogLevel defaultLevel;
-    bool frozen = false;
+    const std::string defaultTopic;
+    const BLogLevel defaultLevel;
 
 public:
     BLogContext(std::shared_ptr<BLogger> l, std::string topic, BLogLevel level = BLogLevel::INFO)
