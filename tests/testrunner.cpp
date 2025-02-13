@@ -1,6 +1,7 @@
 #include <cassert>
 #include <iostream>
 #include <memory>
+#include <stdexcept>
 #include <thread>
 #include <vector>
 
@@ -11,6 +12,7 @@
 #include "../include/logger/messages/binaryBMsg.hpp"
 #include "../include/logger/decorators/btimestampDecorator.hpp"
 #include "../include/logger/decorators/bloglevelDecorator.hpp"
+#include "../include/logger/decorators/blocationDecorator.hpp"
 
 void testBinaryMessage(std::shared_ptr<BLogger> lg) {
     std::cout << "Test Binary Message: \n";
@@ -239,6 +241,88 @@ void testEaseOfUsePt1() {
     memLgW.raw()[BLogLevel::ERROR] << "Works like this as well";
 }
 
+void testConditionalLogging() {
+    std::cout << "Test Conditional Logging:\n";
+
+    // Setup logger with decorators
+    BLogger* what = new BConsoleLogger("test_logger");
+    auto baseLogger = std::shared_ptr<BLogger>(what);
+    auto logger = BTimestampDecorator::decorate(baseLogger);
+
+    // Test basic conditions
+    bool trueCondition = true;
+    bool falseCondition = false;
+    
+    // Test true condition
+    (*logger) % trueCondition << "Should be logged";
+    assert(logger->getLastMessage() == "Should be logged");
+
+    // Test false condition
+    (*logger)[BLogLevel::INFO] % falseCondition << "Should not be logged";
+    assert(logger->getLastMessage() == "");  // Reset Message
+
+    // Test with different log levels
+    (*logger)[BLogLevel::DEBUG] % trueCondition << "Debug message";
+    assert(logger->getLastMessage() == "Debug message");
+
+    // Test with topics
+    (*logger)("TestTopic")[BLogLevel::INFO] % trueCondition << "Topic message";
+    assert(logger->getLastMessage() == "Topic message");
+
+    // Test multiple conditions
+    (*logger)[BLogLevel::INFO] % trueCondition % trueCondition << "Multiple true";
+    assert(logger->getLastMessage() == "Multiple true");
+
+    (*logger)[BLogLevel::INFO] % trueCondition % falseCondition << "Should not log";
+    assert(logger->getLastMessage() == "");  // Reset
+
+    // Test with lambda conditions
+    int x = 5;
+    (*logger)[BLogLevel::INFO] % [&x]() { return x > 3; } << "Lambda true";
+    assert(logger->getLastMessage() == "Lambda true");
+
+    (*logger)[BLogLevel::INFO] % [&x]() { return x < 3; } << "Lambda false";
+    assert(logger->getLastMessage() == "");  // Reset
+
+    // Test with complex messages
+    (*logger)[BLogLevel::INFO] % trueCondition << "Part 1" << " Part 2" << " Part 3";
+    assert(logger->getLastMessage() == "Part 1 Part 2 Part 3");
+
+    // Test with BLogMessage types
+    (*logger)[BLogLevel::INFO] % trueCondition << BinaryBMsg(42);
+    assert(logger->getLastMessage() == "00000000000000000000000000101010");
+
+    // Test with decorators
+    try {
+        BLOG_AT(logger)[BLogLevel::INFO] % trueCondition << "Location test";
+        assert(false);
+    } catch(std::runtime_error& err) {
+        (*logger) << ("Sucess: Cant Locationlog without Decorator");
+    }
+
+    // Test with std::function
+    std::function<bool()> trueFunc = []() { return true; };
+    std::function<bool()> falseFunc = []() { return false; };
+    
+    (*logger)[BLogLevel::INFO] % trueFunc << "Function true";
+    assert(logger->getLastMessage() == "Function true");
+
+    (*logger)[BLogLevel::INFO] % falseFunc << "Function false";
+    assert(logger->getLastMessage() == "");
+
+    // Test with function pointer
+    bool (*funcPtr)() = []() -> bool { return true; };
+    (*logger)[BLogLevel::INFO] % funcPtr << "Function pointer true";
+    assert(logger->getLastMessage() == "Function pointer true");
+
+    // Test nullptr function pointer
+    bool (*nullFunc)() = nullptr;
+    (*logger)[BLogLevel::INFO] % nullFunc << "Should not log";
+    assert(logger->getLastMessage() == "");  // Still empty
+
+    std::cout << "All conditional logging tests passed!\n";
+}
+
 int main(int argc, char *argv[]) {
     if(argc != 1) {
         std::cout << "Execute-Parameters are not yet implemented" << std::endl;
@@ -246,6 +330,7 @@ int main(int argc, char *argv[]) {
         for(int i = 1; i < argc; i++)
           std::cout << "\t" << argv[i] << "\n";
     }
+    testConditionalLogging();
 
     testBLoggerManager();
     const auto& logger = BLoggerManager::getLoggerPtr("console");
@@ -270,6 +355,21 @@ int main(int argc, char *argv[]) {
     testTopicsAndFreeze();
 
     testEaseOfUsePt1();
+
+    auto a = BLocationDecorator::decorate(logger);
+    (*a)[BLogLevel::ERROR] << "Test A";
+    BLOG_AT(a.get())[BLogLevel::ERROR] << "Will it display a Line?";
+    auto b = BTimestampDecorator::decorate(a);
+    (*b)[BLogLevel::ERROR] << "Test B";
+    auto c = BLoglevelDecorator::decorate(b);
+    (*c)[BLogLevel::ERROR] << "Test C";
+
+    BLOG_AT(c.get())[BLogLevel::ERROR] << "Working?";
+
+
+    for(int ii = 0; ii < 1000000; ii++)
+        (*logger)[BLogLevel::INFO] << ii;
     
+
     return 0;
 }

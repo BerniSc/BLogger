@@ -12,6 +12,8 @@ class BLoggerDecorator : public BLogger {
         // Provide an interface to have an arbitrarily decorated Message (Front as well as Back) while collecting the logic here
         virtual std::string decorateMessage(const std::string& msg) = 0;
 
+        // Try not to use .get() on instaces of our Decorator, but keep on using the shared_ptr
+        // Otherwise the Object might be destroyed before use which leads to horrible stuff and hard errors
         inline BLoggerDecorator(std::shared_ptr<BLogger> logger, const std::string& decoratorType)
             : BLogger(logger->getName() + "_" + decoratorType)
             , wrapped(std::move(logger)) {
