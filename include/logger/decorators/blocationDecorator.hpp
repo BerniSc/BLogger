@@ -2,12 +2,14 @@
 #define BLOCATION_DECORATOR_HPP
 
 #include "../decorators/bloggerDecorator.hpp"
+#include "../blogContext.hpp"
 
 #define BLOG_AT(logger) \
     ([&]() -> BLogger& { \
-        auto* loc = BLocationDecorator::findInChain(BLoggerAccess::getPtr(logger)); \
+        BLocationDecorator* loc = BLocationDecorator::findInChain(BLoggerAccess::getPtr(logger)); \
         if(!loc) throw std::runtime_error("You need to decorate you Logger with a BLocationDecorator for this to Work!"); \
-        return (loc->setLocation(__FILE__, __LINE__), *logger); \
+        loc->setLocation(__FILE__, __LINE__); \
+        return *BLoggerAccess::getPtr(logger); \
     }())
 
 // Unify all BLoggerAccesses (Raw Ptr, Reference and SharedPtr) into a raw ptr
@@ -15,6 +17,7 @@ class BLoggerAccess {
     public:
         static BLogger* getPtr(BLogger* ptr) { return ptr; }
         static BLogger* getPtr(BLogger& ref) { return &ref; }
+        static BLogger* getPtr(BLogContext& blg) { return &(blg.raw()); }
         static BLogger* getPtr(const std::shared_ptr<BLogger>& ptr) { return ptr.get(); }
 };
 
@@ -25,8 +28,11 @@ class BLocationDecorator : public BLoggerDecorator {
         struct LocationInfo {
             std::string file;
             int line;
-        } currentLocation;
-        bool hasLocation = false;
+            bool isValid;
+        };
+        // Needs to be thread local. Otherwise there is a small gap between setLocation of macro and log
+        // During this time another Thread can reset the Flag in which case the location is not logged
+        static inline thread_local LocationInfo threadLocation;
 
         // Cache last known instance per thread for performance
         static inline thread_local BLocationDecorator* lastInstance = nullptr;
@@ -35,9 +41,9 @@ class BLocationDecorator : public BLoggerDecorator {
     protected:
         std::string decorateMessage(const std::string& msg) override {
             std::lock_guard<std::mutex> lock(locationMutex);
-            if(hasLocation) {
-                hasLocation = false;
-                return "[" + currentLocation.file + ":" + std::to_string(currentLocation.line) + "] " + msg;
+            if(threadLocation.isValid) {
+                threadLocation.isValid = false;
+                return "[" + threadLocation.file + ":" + std::to_string(threadLocation.line) + "] " + msg;
             }
             return msg;
         }
@@ -57,9 +63,9 @@ class BLocationDecorator : public BLoggerDecorator {
         // Set the Location. Called via the Macro. Returns Reference for Chaining
         BLogger& setLocation(const char* file, int line) {
             std::lock_guard<std::mutex> lock(locationMutex);
-            currentLocation.file = file;
-            currentLocation.line = line;
-            hasLocation = true;
+            threadLocation.file = file;
+            threadLocation.line = line;
+            threadLocation.isValid = true;
             return *this;
         }
 
