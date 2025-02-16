@@ -27,4 +27,12 @@ create_dirs:
 clean:
 	rm -f $(OBJS) $(TARGET)
 
-.PHONY: clean create_dirs run
+all: clean $(TARGET)
+
+run-all: clean $(TARGET) run
+
+test-all: clean
+	$(MAKE) CXXFLAGS="$(CXXFLAGS) -DLOGGER_DEBUG" $(TARGET)
+	./$(TARGET)
+
+.PHONY: clean create_dirs run all run-all test-all

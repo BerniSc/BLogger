@@ -51,6 +51,12 @@ class BLoggerManager {
         static void setLoggerLevel(const std::string& loggerName, BLogLevel level) {
             BLoggerConfig::setLoggerLevel(loggerName, level);
         }
+
+        #ifdef LOGGER_DEBUG
+            static void debugReset() {
+                loggers().clear();
+            }
+        #endif
 };
 
 #endif

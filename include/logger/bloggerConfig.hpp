@@ -27,7 +27,10 @@ const std::map<BLogLevel, std::string> LEVEL_TO_STRING = {
 class BLoggerConfig {
     private:
         // What Loglevels should be permitted? Allow all by Default
-        static inline BLogLevel defaultLogLevel = BLogLevel::NONE;
+        static BLogLevel& defaultLogLevel() {
+            static BLogLevel defaultLogLevel = BLogLevel::NONE;
+            return defaultLogLevel;
+        }
 
         static std::map<std::string, BLogLevel>& customLevels() {
             static std::map<std::string, BLogLevel> instance;
@@ -41,31 +44,34 @@ class BLoggerConfig {
         };              
 
         // Changes to Config permitted?
-        static inline bool frozen = false;
+        static inline bool& frozen() {
+            static bool frozen = false;
+            return frozen;
+        }
 
     public:
         static void initialize(BLogLevel level, std::initializer_list<std::string> initialTopics = {}) {
-            if(frozen) 
+            if(frozen()) 
                 throw std::runtime_error("Configuration already frozen");
             setDefaultLogLevel(level);
             setTopics(initialTopics);
         }
 
         static void setDefaultLogLevel(BLogLevel level) {
-            if(frozen)
+            if(frozen())
                 throw std::runtime_error("Configuration already frozen");
-            defaultLogLevel = level;
+            defaultLogLevel() = level;
         }
 
         static void setTopics(std::initializer_list<std::string> topics) {
-            if(frozen)
+            if(frozen())
                 throw std::runtime_error("Configuration already frozen");
             enabledTopics().clear();
             enabledTopics().insert(topics.begin(), topics.end());
         }
 
         static void setLoggerLevel(const std::string& loggerName, BLogLevel level) {
-            if(frozen)
+            if(frozen())
                 throw std::runtime_error("Configuration already frozen");
             if(customLevels().find(loggerName) != customLevels().end())
                 throw std::runtime_error("Log level for '" + loggerName + "' already set: " + LEVEL_TO_STRING.at(level));
@@ -76,7 +82,7 @@ class BLoggerConfig {
         static BLogLevel getLoggerLevel(const std::string& loggerName) noexcept {
             auto& levels = customLevels();
             auto it = levels.find(loggerName);
-            return (it != levels.end()) ? it->second : defaultLogLevel;
+            return (it != levels.end()) ? it->second : defaultLogLevel();
         }
 
         static bool isTopicEnabled(const std::string& topic) noexcept {
@@ -84,8 +90,17 @@ class BLoggerConfig {
         }
 
         static void freeze() noexcept {
-            frozen = true;
+            frozen() = true;
         }
+
+        #ifdef LOGGER_DEBUG
+            static void debugReset() {
+                defaultLogLevel() = BLogLevel::NONE;
+                enabledTopics().clear();
+                customLevels().clear();
+                frozen() = false;
+            }
+        #endif
 };
 
 #endif
