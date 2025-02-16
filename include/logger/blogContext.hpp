@@ -25,6 +25,10 @@ public:
         return (*logger);
     }
 
+    std::shared_ptr<BLogger>& ptr() {
+        return logger;
+    }
+
     BLogger& none() { return (*logger)(defaultTopic)[BLogLevel::NONE]; }
     BLogger& debug() { return (*logger)(defaultTopic)[BLogLevel::DEBUG]; }
     BLogger& log() { return (*logger)(defaultTopic)[BLogLevel::LOG]; }
