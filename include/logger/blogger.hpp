@@ -295,6 +295,18 @@ struct BLogger {
         bool isFrozen() const noexcept {
             return frozen();
         }
+
+        #ifdef LOGGER_DEBUG
+            static void debugReset() {
+                currentLogLevel() = BLogLevel::NONE;
+                defaultLogLevel() = BLogLevel::NONE;
+                currentTopic() = "";
+                defaultTopic() = "";
+                frozen() = false;
+                condition() = true;
+            }
+        #endif
+
 };
 
 inline std::atomic<uint8_t> BLogger::instance_counter = 0;
