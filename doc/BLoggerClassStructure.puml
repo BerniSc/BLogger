@@ -1,0 +1,142 @@
+@startuml BLogger
+
+class Chain {
+    - logger : BLogger&
+    - doLog : bool
+    - lock: std::unique_lock<std::mutex>
+    + ~Chain()
+    + operator<<(const BLogMessage&) : Chain&
+    + operator<<(const T&) : Chain&
+}
+
+class BConsoleLogger {
+    + log(string&) : void
+}
+
+class BFileLogger {
+    + log(string&) : void
+}
+
+abstract class BLogger {
+    - {static} outputMutex() : std::mutex&
+    # {abstract} log(string&) : void
+    # shouldLog(BLogLevel, string) : bool
+    + operator<<(const BLogMessage&) : Chain
+    + operator<<(const T&) : Chain
+    + operator%(bool) : BLogger&
+    + operator%(bool(*)()) : BLogger&
+    + operator[](BLogLevel) : BLogger&
+    + operator()(string) : BLogger&
+    + withDefaults(string, BLogLevel) : BLogger&
+    + freeze() : void
+}
+
+class BLogContext {
+    - logger : shared_ptr<BLogger>
+    - defaultLogLevel : BLogLevel
+    - defaultTopic : string
+    + BLogContext(shared_ptr<BLogger>, string, BLogLevel=BLogLevel::INFO) )
+    + operator<<(const T&) : auto
+    + none() : BLogger& 
+    + debug() : BLogger& 
+    + log() : BLogger& 
+    + info() : BLogger& 
+    + warning() : BLogger& 
+    + error() : BLogger& 
+}
+
+class BLoggerManager {
+    - {static} loggers() : map<string, shared_ptr<BLogger>>&
+    + {static} addLogger(shared_ptr<BLogger>) : void
+    + {static} getLoggerPtr(string) : shared_ptr<BLogger>
+    + {static} get(string) : BLogger&
+    + {static} getAvailableLoggers() : string
+    + {static} setDefaultLogLevel(BLogLevel) : void
+    + {static} setLoggerLevel(string, BLogLevel) : void
+}
+
+enum BLogLevel {
+    NONE
+    DEBUG
+    LOG
+    INFO
+    WARNING
+    ERROR
+}
+
+
+interface BLogMessage {
+    + {abstract} const serialize() const : string
+}
+
+class binaryBMsg {
+    - data : T
+    + binaryBMsg(T)
+    + const serialize() const : string
+}
+
+class BLoggerConfig {
+    - {static} defaultLogLevel() : BLogLevel&
+    - {static} customLevels() : map<string, BLogLevel>&
+    - {static} enabledTopics() : set<string>&
+    - {static} frozen() : bool&
+    + {static} initialize(BLogLevel, initializer_list<string>) : void
+    + {static} setDefaultLogLevel(BLogLevel) : void
+    + {static} setTopics(initializer_list<string>) : void
+    + {static} setLoggerLevel(string, BLogLevel) : void
+    + {static} getLoggerLevel(string) : BLogLevel
+    + {static} isTopicEnabled(string) : bool
+    + {static} freeze() : void
+    + {static} debugReset() : void
+}
+
+abstract class BLoggerDecorator {
+    - logger : BLogger&
+    - currentMessage : string
+    # log(string&) {override}: void
+    # {abstract} decorateMessage(const string&) : string
+    + ~BLoggerDecorator()
+    + operator[](BLogLevel) : BLogger&
+}
+ 
+class BLocationDecorator { 
+    - locationMutex : mutex
+    - {static} threadLocation : LocationInfo
+    + BLocationLogger(std::shared_ptr<BLogger>)
+    + {static} decorate(std::shared_ptr<BLogger>) : std::shared_ptr<BLogger> 
+    + setLocation(file: char*, line: int) : BLogger&
+    + {static} findInChain(logger: BLogger*) : BLocationDecorator*
+    + BLOG_AT(logger) {macro}
+}
+
+class BLoglevelDecorator {
+    # decorateMessage(const string&) : string
+    + BLoglevelDecorator(std::shared_ptr<BLogger>)
+    + {static} decorate(std::shared_ptr<BLogger>) : std::shared_ptr<BLogger> 
+}
+
+note bottom of BLocationDecorator: Adds source file/linenumber to log messages via BLOG_AT macro.\nMacro can be called with Reference, Instance, SharedPtr or raw Pointer.
+
+BLogger +-left--> Chain
+BLogger .> BLogMessage
+BLogger <|... BLoggerDecorator
+BLocationDecorator .right|> BLoggerDecorator
+BLoggerDecorator -[hidden]right- BConsoleLogger
+BLoglevelDecorator ...|> BLoggerDecorator
+BLoglevelDecorator -[hidden]down- BLocationDecorator
+BLoglevelDecorator -[hidden]- BLocationDecorator
+BLogger <|... BFileLogger
+BLogger <|... BConsoleLogger
+BLoggerDecorator *---> BLogger
+BLoggerDecorator -[hidden] BConsoleLogger
+BLogMessage <|.. binaryBMsg
+BLogContext -down-> BLogger
+BLoggerManager --down-> BLogger
+BLoggerConfig <.. BLogger
+BLoggerConfig <. BLoggerManager
+BLoggerConfig --> BLogLevel
+BLoggerManager ..> BLogLevel
+BLogger .up.> BLogLevel
+BLogContext --> BLogLevel
+@enduml
+

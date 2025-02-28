@@ -70,6 +70,8 @@ class BLocationDecorator : public BLoggerDecorator {
         }
 
         // Chain traversal witth caching
+        // Need to set the Location at the Instance of our Actual BLocationDecorator. The others 
+        // dont have the appropriate set and log functions
         static BLocationDecorator* findInChain(BLogger* logger) {
             // same logger as last time? Cache Hit
             if(lastInstance && lastLogger == logger)
