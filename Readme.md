@@ -1,3 +1,5 @@
+[![Visits Badge](https://badges.pufler.dev/visits/BerniSc/BLogger)](https://badges.pufler.dev)
+
 # BLogger
 Small Project for learning/configuring and getting used to nvim and my new NVim Config. 
 
