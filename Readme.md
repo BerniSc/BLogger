@@ -133,11 +133,10 @@ class MyMSG : public BLogMessage {
 
 ### Implementing own Decorator to change the output of Messages
 ```cpp
-// Inheriting from BLoggerDecorator and 
+// Inheriting from BLoggerDecorator and overwriting decorateMessage
 class MyDecorator : public BLoggerDecorator {
     protected:
         inline std::string decorateMessage(const std::string& msg) override {
-
             return ("[" + "MY_STUFF" + "] " + msg);
         }
 
